@@ -1,0 +1,44 @@
+body {
+    font-family: Verdana
+}
+
+#colors > div {
+    border: solid 1px gray;
+}
+
+.red {
+    color: red;
+}
+
+.orange {
+    color: orange;
+}
+
+.yellow {
+    color: yellow;
+}
+
+.green {
+    color: green;
+}
+
+.red > div{
+    background-color: red;
+}
+
+.orange > div{
+    background-color: orange;
+}
+
+.yellow > div{
+    background-color: yellow;
+}
+
+.green > div{
+    background-color: green;
+}
+
+.selected{
+    font-weight: bold;
+    text-transform: uppercase;
+}
