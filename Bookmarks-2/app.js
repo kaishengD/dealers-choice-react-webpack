@@ -1,5 +1,4 @@
 //db
-
 const pg = require('pg');
 const Sequelize = require('sequelize');
 
@@ -39,7 +38,8 @@ const Category = db.define('category',{
     }
 })
 Bookmark.belongsTo(Category);
-Category.hasMany(Bookmark);
+
+// Category.hasMany(Bookmark);
 const syncAndSeed = async() => {
     const job = await Category.create({type: 'Job'});
     const search = await Category.create({type: 'Search'});
@@ -56,15 +56,17 @@ const syncAndSeed = async() => {
     leetcode.categoryId = coding.id;
     await Promise.all([linkedin.save(),indeed.save(),google.save(),bing.save(),leetcode.save()]);
 }
-Bookmark.belongsTo(Category);
+
 //initiation 
 
 const express = require('express');
 const contentDisposition = require('content-disposition');
 const { redirect } = require('express/lib/response');
 const { includes } = require('lodash');
+const { captureRejections } = require('pg/lib/query');
 const app = express();
-
+app.use(express.urlencoded({extended:false}));
+app.use(require('method-override')('_method'));
 const init = async() =>{
     try{
         await db.authenticate();
@@ -83,6 +85,28 @@ const init = async() =>{
 }
 
 init()
+app.post('/bookmarks',async(req,res,next)=>{
+    try{
+        console.log(req.body);
+        const web = await Bookmark.create(req.body);
+        console.log(web);
+        res.redirect(`/category/${web.categoryId}`);
+    }catch(err){
+        next(err)
+    }
+})
+
+app.delete('/bookmarks/:id',async(req,res, next)=>{
+    try{
+        const web = await Bookmark.findByPk(req.params.id);
+        console.log(web)
+        await web.destroy();
+        console.log('deleted')
+        res.redirect(`/category/${web.categoryId}`)
+    }catch(err){
+        next(err)
+    }
+})
 
 app.get('/',async(req,res,next)=>{
     try{
@@ -96,12 +120,12 @@ app.get('/bookmarks',async(req,res,next)=>{
         const bookmarks = await Bookmark.findAll({
             include:[Category]
         });
-
+        const categories = await Category.findAll();
         const html = bookmarks.map((bookmark)=>{
         return `
         <div>
              ${bookmark.name} 
-             <a href = '/bookmarks/category/${bookmark.category.id}'>${bookmark.category.type}</a>
+             <a href = '/category/${bookmark.category.id}'>${bookmark.category.type}</a>
         </div>
         `
         }).join('')
@@ -112,6 +136,17 @@ app.get('/bookmarks',async(req,res,next)=>{
         <html>
         <body>
             <h5>ACME_USER_DB_v2</h5>
+            <form method = 'POST'>
+                <input name = 'name' placeholder = 'website'/>
+                <select name = 'categoryId'>
+                    ${
+                        categories.map((category)=>{
+                            return `<option value = '${category.id}'>${category.type}</option>`
+                        }).join()
+                    }
+                </select>
+                <button>create</button>
+            </form>
             ${html}
         </body>
         </html>
@@ -122,7 +157,7 @@ app.get('/bookmarks',async(req,res,next)=>{
     }
 })
 
-app.get('/bookmarks/category/:id',async(req,res,next)=>{
+app.get('/category/:id',async(req,res,next)=>{
     try{
         const bookmarks = await Bookmark.findAll({
             where:{categoryId: req.params.id}
@@ -131,13 +166,12 @@ app.get('/bookmarks/category/:id',async(req,res,next)=>{
         const html = bookmarks.map((bookmark)=>{
         return `
         <div>
-            ${bookmark.name}
+            ${bookmark.name} <form method = 'POST' action = '/bookmarks/${bookmark.id}?_method=delete'><button>x</button></form>
         </div>
         `
         }).join('')
 
         res.send(
-        
         `
         <html>
         <body>
